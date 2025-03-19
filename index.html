@@ -34,6 +34,11 @@
     button:hover {
       background-color: #45a049;
     }
+    #uploadedFiles {
+      margin-top: 1rem;
+      text-align: left;
+      display: inline-block;
+    }
     #output {
       margin-top: 1rem;
       white-space: pre-wrap;
@@ -46,74 +51,108 @@
     <h1>Willkommen bei der Vokabel-KI</h1>
   </header>
   <main>
-    <h2>Bitte lade eine Bilddatei hoch</h2>
-    <input type="file" id="imageInput" accept="image/*">
+    <h2>Bitte lade Bilder mit deinen Vokabeln hoch</h2>
+    <input type="file" id="imageInput" accept="image/*" multiple>
     <br>
-    <button onclick="processImage()">Texte auslesen</button>
+    <button onclick="listUploadedFiles()">Hochgeladene Dateien anzeigen</button>
+    <button onclick="processImages()">Texte auslesen</button>
+    <button onclick="startTrainer()">Vokabeltrainer starten</button>
+    <div id="uploadedFiles"></div>
     <div id="output"></div>
   </main>
   <script src="https://unpkg.com/tesseract.js@v2.1.1/dist/tesseract.min.js"></script>
   <script>
-    async function processImage() {
-      const imageInput = document.getElementById('imageInput');
-      const output = document.getElementById('output');
+    const uploadedFiles = [];
+    let vocabList = [];
 
-      if (imageInput.files.length === 0) {
-        output.innerText = "Bitte wähle eine Bilddatei aus!";
+    function listUploadedFiles() {
+      const imageInput = document.getElementById('imageInput');
+      const fileList = document.getElementById('uploadedFiles');
+      uploadedFiles.length = 0;
+
+      for (const file of imageInput.files) {
+        uploadedFiles.push(file);
+      }
+
+      if (uploadedFiles.length === 0) {
+        fileList.innerText = "Keine Dateien hochgeladen.";
         return;
       }
 
-      const file = imageInput.files[0];
-      const reader = new FileReader();
-
-      reader.onload = async function(event) {
-        const img = new Image();
-        img.src = event.target.result;
-
-        output.innerText = "Texterkennung läuft... Bitte warten.";
-
-        // Verarbeite das Bild mit Tesseract.js
-        const { data: { text } } = await Tesseract.recognize(img.src, 'deu');
-        output.innerText = `Extrahierter Text:\n\n${text}`;
-
-        // Starte den Vokabeltrainer
-        startTrainer(text);
-      };
-
-      reader.readAsDataURL(file);
+      fileList.innerHTML = "<strong>Hochgeladene Dateien:</strong><br>" + 
+        uploadedFiles.map(file => file.name).join('<br>');
     }
 
-    function startTrainer(text) {
-      const output = document.getElementById('output');
-      const words = text.split(/\s+/).filter(word => word.length > 3);
-      let currentWordIndex = 0;
-
-      if (words.length === 0) {
-        output.innerText += "\nKeine Vokabeln gefunden!";
+    async function processImages() {
+      if (uploadedFiles.length === 0) {
+        document.getElementById('output').innerText = "Bitte lade zuerst Dateien hoch.";
         return;
       }
 
-      output.innerText += `\n\nStarte den Vokabeltrainer! Vokabeln: ${words.length}`;
-      askQuestion();
+      const output = document.getElementById('output');
+      output.innerText = "Texte werden verarbeitet...";
+
+      vocabList = [];
+      for (const file of uploadedFiles) {
+        const reader = new FileReader();
+        reader.onload = async function(event) {
+          const img = new Image();
+          img.src = event.target.result;
+
+          const { data: { text } } = await Tesseract.recognize(img.src, 'deu');
+          vocabList.push(...text.split(/\s+/));
+        };
+        reader.readAsDataURL(file);
+      }
+
+      output.innerText = "Texte erfolgreich extrahiert! Du kannst den Vokabeltrainer starten.";
+    }
+
+    function startTrainer() {
+      if (vocabList.length === 0) {
+        document.getElementById('output').innerText = "Bitte extrahiere zuerst die Texte.";
+        return;
+      }
+
+      const output = document.getElementById('output');
+      let currentIndex = 0;
+
+      function normalize(word) {
+        return word.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      }
 
       function askQuestion() {
-        if (currentWordIndex >= words.length) {
-          output.innerText += "\n\nToll! Du hast alle Vokabeln durch!";
+        if (currentIndex >= vocabList.length) {
+          output.innerText = "Vokabeltrainer abgeschlossen!";
           return;
         }
 
-        const currentWord = words[currentWordIndex];
-        const userAnswer = prompt(`Was bedeutet: "${currentWord}"?`);
+        const isFrenchToGerman = Math.random() > 0.5;
+        const word = vocabList[currentIndex++];
+        const question = isFrenchToGerman ? 
+          `Was bedeutet das französische Wort: "${word}" auf Deutsch?` : 
+          `Wie heißt "${word}" auf Französisch?`;
+
+        const userAnswer = prompt(question);
 
         if (userAnswer !== null) {
-          output.innerText += `\n"${currentWord}" -> Deine Antwort: ${userAnswer}`;
-          currentWordIndex++;
+          const normalizedAnswer = normalize(userAnswer);
+          const normalizedWord = normalize(word);
+
+          if (normalizedAnswer === normalizedWord) {
+            output.innerText += `\nRichtig: "${word}"`;
+          } else {
+            output.innerText += `\nFalsch: "${word}" -> Deine Antwort: ${userAnswer}`;
+          }
           askQuestion();
         } else {
-          output.innerText += "\n\nVokabeltrainer abgebrochen.";
+          output.innerText += "\nVokabeltrainer abgebrochen.";
         }
       }
+
+      askQuestion();
     }
   </script>
 </body>
 </html>
+
