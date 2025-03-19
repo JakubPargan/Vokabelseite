@@ -34,6 +34,11 @@
     button:hover {
       background-color: #45a049;
     }
+    #output {
+      margin-top: 1rem;
+      white-space: pre-wrap;
+      text-align: left;
+    }
   </style>
 </head>
 <body>
@@ -41,30 +46,72 @@
     <h1>Willkommen bei der Vokabel-KI</h1>
   </header>
   <main>
-    <h2>Bitte lade deine Vokabeldatei hoch</h2>
-    <input type="file" id="upload">
+    <h2>Bitte lade eine Bilddatei mit Vokabeln hoch</h2>
+    <input type="file" id="imageInput" accept="image/*">
     <br>
-    <button onclick="uploadFile()">Hochladen</button>
-    <p id="message"></p>
+    <button onclick="processImage()">Texte auslesen</button>
+    <div id="output"></div>
   </main>
+  <script src="https://unpkg.com/tesseract.js@v2.1.1/dist/tesseract.min.js"></script>
   <script>
-    async function uploadFile() {
-      const fileInput = document.getElementById('upload');
-      if (fileInput.files.length === 0) {
-        document.getElementById('message').innerText = "Bitte wähle eine Datei aus!";
+    async function processImage() {
+      const imageInput = document.getElementById('imageInput');
+      const output = document.getElementById('output');
+
+      if (imageInput.files.length === 0) {
+        output.innerText = "Bitte wähle eine Bilddatei aus!";
         return;
       }
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-      try {
-        const response = await fetch('http://localhost:5000/upload', {
-          method: 'POST',
-          body: formData
-        });
-        const result = await response.text();
-        document.getElementById('message').innerText = result;
-      } catch (error) {
-        document.getElementById('message').innerText = "Fehler beim Hochladen!";
+
+      const file = imageInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async function(event) {
+        const img = new Image();
+        img.src = event.target.result;
+
+        output.innerText = "Texterkennung läuft... Bitte warten.";
+
+        // Nutze Tesseract.js für die Texterkennung
+        const { data: { text } } = await Tesseract.recognize(img.src, 'deu');
+        output.innerText = `Extrahierter Text:\n\n${text}`;
+
+        // Starte den Vokabeltrainer mit dem extrahierten Text
+        startTrainer(text);
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    function startTrainer(text) {
+      const output = document.getElementById('output');
+      const words = text.split(/\s+/).filter(word => word.length > 3); // Filter für längere Wörter
+      let currentWordIndex = 0;
+
+      if (words.length === 0) {
+        output.innerText += "\nKeine Vokabeln gefunden!";
+        return;
+      }
+
+      output.innerText += `\n\nStarte den Vokabeltrainer! Vokabeln: ${words.length}`;
+      askQuestion();
+
+      function askQuestion() {
+        if (currentWordIndex >= words.length) {
+          output.innerText += "\n\nToll! Du hast alle Vokabeln durch!";
+          return;
+        }
+
+        const currentWord = words[currentWordIndex];
+        const userAnswer = prompt(`Was bedeutet: "${currentWord}"?`);
+
+        if (userAnswer !== null) {
+          output.innerText += `\n"${currentWord}" -> Deine Antwort: ${userAnswer}`;
+          currentWordIndex++;
+          askQuestion();
+        } else {
+          output.innerText += "\n\nVokabeltrainer abgebrochen.";
+        }
       }
     }
   </script>
