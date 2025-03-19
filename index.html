@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vokabel-KI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      background-color: #f9f9f9;
+    }
+    header {
+      background-color: #4CAF50;
+      color: white;
+      padding: 1rem;
+    }
+    main {
+      padding: 2rem;
+    }
+    input[type="file"] {
+      margin-top: 1rem;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Willkommen bei der Vokabel-KI</h1>
+  </header>
+  <main>
+    <h2>Bitte lade deine Vokabeldatei hoch</h2>
+    <input type="file" id="upload">
+    <br>
+    <button onclick="uploadFile()">Hochladen</button>
+    <p id="message"></p>
+  </main>
+  <script>
+    async function uploadFile() {
+      const fileInput = document.getElementById('upload');
+      if (fileInput.files.length === 0) {
+        document.getElementById('message').innerText = "Bitte wähle eine Datei aus!";
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      try {
+        const response = await fetch('http://localhost:5000/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await response.text();
+        document.getElementById('message').innerText = result;
+      } catch (error) {
+        document.getElementById('message').innerText = "Fehler beim Hochladen!";
+      }
+    }
+  </script>
+</body>
+</html>
