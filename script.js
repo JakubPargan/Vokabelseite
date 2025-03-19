@@ -1,74 +1,60 @@
-// Lade Tesseract.js und führe Textverarbeitung durch
-async function processImage() {
+const uploadedFiles = [];
+let vocabList = [];
+const startTrainerButton = document.getElementById('startTrainerButton');
+
+function listUploadedFiles() {
   const imageInput = document.getElementById('imageInput');
-  const output = document.getElementById('output');
-  const canvas = document.getElementById('canvas');
-  const context = canvas.getContext('2d');
+  const fileList = document.getElementById('uploadedFiles');
+  uploadedFiles.length = 0;
 
-  if (imageInput.files.length === 0) {
-    output.innerText = "Bitte wähle ein Bild aus!";
+  // Liste aller hochgeladenen Dateien aktualisieren
+  for (const file of imageInput.files) {
+    uploadedFiles.push(file);
+  }
+
+  if (uploadedFiles.length === 0) {
+    fileList.innerText = "Keine Dateien hochgeladen.";
     return;
   }
 
-  const file = imageInput.files[0];
-  const img = new Image();
-  img.src = URL.createObjectURL(file);
+  fileList.innerHTML = "<strong>Hochgeladene Dateien:</strong><br>" +
+    uploadedFiles.map(file => file.name).join('<br>');
 
-  img.onload = async () => {
-    canvas.width = img.width;
-    canvas.height = img.height;
-    context.drawImage(img, 0, 0);
-
-    // OCR-Verarbeitung mit Tesseract.js
-    output.innerText = "Verarbeite das Bild...";
-    const { createWorker } = Tesseract;
-    const worker = createWorker();
-
-    await worker.load();
-    await worker.loadLanguage('deu');
-    await worker.initialize('deu');
-
-    const { data: { text } } = await worker.recognize(canvas);
-    output.innerText = `Extrahierter Text:\n\n${text}`;
-
-    await worker.terminate();
-
-    // Starte den Vokabeltrainer mit dem extrahierten Text
-    startTrainer(text);
-  };
+  // Nur wenn Dateien hochgeladen wurden, darf der Button zum Extrahieren aktiviert sein
+  document.getElementById('processImagesButton').disabled = false;
 }
 
-// Verarbeite den Text und führe einen Vokabeltrainer durch
-function startTrainer(text) {
+async function processImages() {
   const output = document.getElementById('output');
-  const words = text.split(/\s+/).filter(word => word.length > 3); // Extrahiere Wörter mit mehr als 3 Buchstaben
-  let currentWordIndex = 0;
-
-  // Anzeige des ersten Vokabelworts
-  if (words.length === 0) {
-    output.innerText = "Keine Vokabeln gefunden!";
+  if (uploadedFiles.length === 0) {
+    output.innerText = "Bitte lade zuerst Dateien hoch.";
     return;
   }
 
-  output.innerText = `Lernmodus gestartet! Vokabeln: ${words.length}\n`;
-  askQuestion();
+  output.innerText = "Texte werden verarbeitet...";
+  vocabList = [];
 
-  // Funktion zur Abfrage
-  function askQuestion() {
-    if (currentWordIndex >= words.length) {
-      output.innerText += "\nSuper! Du hast alle Vokabeln durch!";
-      return;
-    }
+  for (const file of uploadedFiles) {
+    const reader = new FileReader();
+    reader.onload = async function(event) {
+      const img = new Image();
+      img.src = event.target.result;
 
-    const currentWord = words[currentWordIndex];
-    const userAnswer = prompt(`Was bedeutet: "${currentWord}"? (Nur eine beispielhafte Logik)`);
+      try {
+        const { data: { text } } = await Tesseract.recognize(img.src, 'deu');
+        vocabList.push(...text.split(/\s+/));
+      } catch (error) {
+        output.innerText = `Fehler beim Verarbeiten von ${file.name}: ${error.message}`;
+      }
 
-    if (userAnswer !== null) {
-      output.innerText += `\n"${currentWord}" -> Deine Antwort: ${userAnswer}`;
-      currentWordIndex++;
-      askQuestion();
-    } else {
-      output.innerText += "\nVokabeltrainer beendet.";
-    }
+      // Prüfen, ob alle Dateien verarbeitet wurden
+      if (uploadedFiles.indexOf(file) === uploadedFiles.length - 1) {
+        output.innerText = "Texte erfolgreich extrahiert! Du kannst den Vokabeltrainer starten.";
+        startTrainerButton.disabled = false; // Vokabeltrainer aktivieren
+      }
+    };
+
+    reader.readAsDataURL(file);
   }
 }
+
