@@ -46,7 +46,7 @@
     <h1>Willkommen bei der Vokabel-KI</h1>
   </header>
   <main>
-    <h2>Bitte lade eine Bilddatei mit Vokabeln hoch</h2>
+    <h2>Bitte lade eine Bilddatei hoch</h2>
     <input type="file" id="imageInput" accept="image/*">
     <br>
     <button onclick="processImage()">Texte auslesen</button>
@@ -72,11 +72,11 @@
 
         output.innerText = "Texterkennung läuft... Bitte warten.";
 
-        // Nutze Tesseract.js für die Texterkennung
+        // Verarbeite das Bild mit Tesseract.js
         const { data: { text } } = await Tesseract.recognize(img.src, 'deu');
         output.innerText = `Extrahierter Text:\n\n${text}`;
 
-        // Starte den Vokabeltrainer mit dem extrahierten Text
+        // Starte den Vokabeltrainer
         startTrainer(text);
       };
 
@@ -85,7 +85,7 @@
 
     function startTrainer(text) {
       const output = document.getElementById('output');
-      const words = text.split(/\s+/).filter(word => word.length > 3); // Filter für längere Wörter
+      const words = text.split(/\s+/).filter(word => word.length > 3);
       let currentWordIndex = 0;
 
       if (words.length === 0) {
