@@ -56,7 +56,7 @@
     <br>
     <button onclick="listUploadedFiles()">Hochgeladene Dateien anzeigen</button>
     <button onclick="processImages()">Texte auslesen</button>
-    <button onclick="startTrainer()">Vokabeltrainer starten</button>
+    <button id="startTrainerButton" onclick="startTrainer()" disabled>Vokabeltrainer starten</button>
     <div id="uploadedFiles"></div>
     <div id="output"></div>
   </main>
@@ -64,6 +64,7 @@
   <script>
     const uploadedFiles = [];
     let vocabList = [];
+    const startTrainerButton = document.getElementById('startTrainerButton');
 
     function listUploadedFiles() {
       const imageInput = document.getElementById('imageInput');
@@ -101,11 +102,15 @@
 
           const { data: { text } } = await Tesseract.recognize(img.src, 'deu');
           vocabList.push(...text.split(/\s+/));
+
+          // Aktiviert den Vokabeltrainer-Button, wenn die Verarbeitung abgeschlossen ist
+          if (uploadedFiles.indexOf(file) === uploadedFiles.length - 1) {
+            output.innerText = "Texte erfolgreich extrahiert! Du kannst den Vokabeltrainer starten.";
+            startTrainerButton.disabled = false;
+          }
         };
         reader.readAsDataURL(file);
       }
-
-      output.innerText = "Texte erfolgreich extrahiert! Du kannst den Vokabeltrainer starten.";
     }
 
     function startTrainer() {
